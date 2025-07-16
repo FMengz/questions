@@ -346,7 +346,10 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        // 从config.js导入GitHub配置
+        import { GITHUB_CONFIG } from './config.js';
+
         // 模拟的选题数据库
         const mockTopicsDatabase = {
             // 这里只列出了5个学生作为示例，实际应该有30+个学生
@@ -408,28 +411,21 @@
             "学生30": ["题目30-1", "题目30-2", "题目30-3"],
         };
 
-        // GitHub配置
-        let githubConfig = {
-            username: '',
-            repo: '',
-            token: '',
-            branch: 'main', // 默认分支
-            filePath: 'data/selected_topics.json' // 数据文件路径
-        };
+        // 直接使用预配置的参数，不再需要弹窗
+        let githubConfig = GITHUB_CONFIG;
 
-        // 检查是否已配置GitHub
-        const savedConfig = localStorage.getItem('githubConfig');
-        if (savedConfig) {
-            try {
-                githubConfig = JSON.parse(savedConfig);
-            } catch (e) {
-                console.error('Failed to parse GitHub config:', e);
-            }
-        } else {
-            // 如果没有配置，显示配置模态框
-            setTimeout(() => {
-                openGithubConfigModal();
-            }, 500);
+        // 检查配置是否完整
+        function checkGithubConfig() {
+            return (
+                githubConfig.username &&
+                githubConfig.repo &&
+                githubConfig.token
+            );
+        }
+
+        // 初始化时检查配置
+        if (!checkGithubConfig()) {
+            showError('GitHub配置不完整，请检查config.js文件');
         }
 
         // 从GitHub加载数据
@@ -575,6 +571,9 @@
         const githubToken = document.getElementById('githubToken');
         const githubConfigError = document.getElementById('githubConfigError');
         
+        // 移除GitHub配置表单提交事件监听器
+        githubConfigForm.removeEventListener('submit', githubConfigFormSubmitHandler);
+
         // 页面加载时从GitHub加载数据
         loadDataFromGitHub().then(data => {
             selectedTopics = data;
@@ -767,245 +766,58 @@
                     // 平滑滚动到管理员区域
                     adminSection.scrollIntoView({ behavior: 'smooth' });
                 } catch (error) {
-                    showError('加载管理员数据失败，请检查GitHub配置');
+                    console.error('Error loading data for admin:', error);
+                    showError('加载管理员数据失败，请稍后再试');
                 }
             } else {
                 // 登录失败
                 loginError.classList.remove('hidden');
-                // 添加错误动画
-                loginError.classList.add('animate-shake');
-                setTimeout(() => {
-                    loginError.classList.remove('animate-shake');
-                }, 500);
             }
         });
-        
+
         // 加载管理员表格数据
         function loadAdminTable() {
-            const students = Object.keys(selectedTopics);
-            const sortedStudents = students.sort((a, b) => {
-                return new Date(selectedTopics[a].time) - new Date(selectedTopics[b].time);
-            });
-            
-            if (sortedStudents.length === 0) {
-                adminTableBody.innerHTML = '';
-                noResults.classList.remove('hidden');
-                return;
-            }
-            
-            noResults.classList.add('hidden');
             adminTableBody.innerHTML = '';
-            
-            sortedStudents.forEach((student, index) => {
-                const selection = selectedTopics[student];
+            let index = 1;
+            for (const [studentName, selection] of Object.entries(selectedTopics)) {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50 transition-colors duration-200';
-                
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">${student}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900">${selection.topic}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${selection.time}
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">${index}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${studentName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${selection.topic}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${selection.time}</td>
                 `;
-                
                 adminTableBody.appendChild(row);
-            });
-        }
-        
-        // 管理员搜索功能
-        adminSearch.addEventListener('input', () => {
-            const searchTerm = adminSearch.value.toLowerCase().trim();
-            const rows = adminTableBody.querySelectorAll('tr');
-            
-            let hasResults = false;
-            
-            rows.forEach(row => {
-                const studentName = row.querySelector('td:nth-child(2) div div').textContent.toLowerCase();
-                if (studentName.includes(searchTerm)) {
-                    row.classList.remove('hidden');
-                    hasResults = true;
-                } else {
-                    row.classList.add('hidden');
-                }
-            });
-            
-            if (!hasResults && searchTerm) {
+                index++;
+            }
+
+            if (Object.keys(selectedTopics).length === 0) {
                 noResults.classList.remove('hidden');
             } else {
                 noResults.classList.add('hidden');
             }
-        });
-        
-        // 打开GitHub配置模态框
-        function openGithubConfigModal() {
-            // 填充已保存的配置
-            githubUsername.value = githubConfig.username || '';
-            githubRepo.value = githubConfig.repo || '';
-            githubToken.value = githubConfig.token || '';
-            
-            githubConfigModal.classList.remove('hidden');
-            setTimeout(() => {
-                githubModalContent.classList.remove('scale-95', 'opacity-0');
-                githubModalContent.classList.add('scale-100', 'opacity-100');
-            }, 10);
         }
-        
-        // 关闭GitHub配置模态框
-        function closeGithubConfigModal() {
-            githubModalContent.classList.remove('scale-100', 'opacity-100');
-            githubModalContent.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                githubConfigModal.classList.add('hidden');
-                githubConfigError.classList.add('hidden');
-            }, 300);
-        }
-        
-        // 关闭GitHub配置模态框按钮点击事件
-        closeGithubModalBtn.addEventListener('click', closeGithubConfigModal);
-        
-        // 点击GitHub配置模态框外部关闭
-        githubConfigModal.addEventListener('click', (e) => {
-            if (e.target === githubConfigModal) {
-                closeGithubConfigModal();
-            }
-        });
-        
-                // GitHub配置表单提交事件
-        githubConfigForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // 获取表单值
-            const username = githubUsername.value.trim();
-            const repo = githubRepo.value.trim();
-            const token = githubToken.value.trim();
-            
-            if (!username || !repo || !token) {
-                githubConfigError.textContent = '请填写所有字段';
-                githubConfigError.classList.remove('hidden');
-                return;
-            }
-            
-            // 保存配置
-            githubConfig = {
-                ...githubConfig,
-                username,
-                repo,
-                token
-            };
-            
-            localStorage.setItem('githubConfig', JSON.stringify(githubConfig));
-            
-            // 测试配置是否有效
-            try {
-                showLoading();
-                await loadDataFromGitHub();
-                closeGithubConfigModal();
-                
-                // 显示成功消息
-                showSuccess('GitHub配置已保存并验证成功');
-                
-                // 更新统计信息，因为可能已经从GitHub加载了新数据
-                updateStatistics();
-            } catch (error) {
-                console.error('GitHub配置测试失败:', error);
-                githubConfigError.textContent = '验证失败，请检查您的GitHub凭证和仓库权限';
-                githubConfigError.classList.remove('hidden');
-                showError('GitHub配置测试失败，请检查您的凭证');
-            } finally {
-                // 隐藏加载状态
-                loadingState.classList.add('hidden');
-                // 如果用户已经输入了姓名，更新按钮状态
-                updateStatistics();
-            }
-        });
-        
-        // 显示成功消息（新增辅助函数）
-        function showSuccess(message) {
-            errorMessage.textContent = message;
-            errorState.classList.remove('hidden');
-            errorState.classList.remove('bg-red-100');
-            errorState.classList.add('bg-green-100');
-            
-            const errorIcon = errorState.querySelector('i');
-            if (errorIcon) {
-                errorIcon.classList.remove('fa-exclamation-triangle', 'text-red-500');
-                errorIcon.classList.add('fa-check-circle', 'text-green-500');
-            }
-            
-            const errorText = errorState.querySelector('p');
-            if (errorText) {
-                errorText.classList.remove('text-red-500');
-                errorText.classList.add('text-green-500');
-            }
-            
-            // 添加成功动画
-            errorState.classList.add('animate-fadeIn');
-            setTimeout(() => {
-                errorState.classList.remove('animate-fadeIn');
-                // 5秒后自动隐藏成功消息
-                setTimeout(() => {
-                    errorState.classList.add('hidden');
-                    // 恢复错误状态样式
-                    errorState.classList.remove('bg-green-100');
-                    errorState.classList.add('bg-red-100');
-                    if (errorIcon) {
-                        errorIcon.classList.remove('fa-check-circle', 'text-green-500');
-                        errorIcon.classList.add('fa-exclamation-triangle', 'text-red-500');
-                    }
-                    if (errorText) {
-                        errorText.classList.remove('text-green-500');
-                        errorText.classList.add('text-red-500');
-                    }
-                }, 5000);
-            }, 10);
-        }
-        
-        // 添加动画样式（在style标签中添加）
-        document.head.insertAdjacentHTML('beforeend', `
-            <style>
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+
+        // 管理员搜索功能
+        adminSearch.addEventListener('input', () => {
+            const searchTerm = adminSearch.value.trim().toLowerCase();
+            const rows = adminTableBody.querySelectorAll('tr');
+            let hasResults = false;
+
+            rows.forEach(row => {
+                const studentName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                if (studentName.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasResults = true;
+                } else {
+                    row.style.display = 'none';
                 }
-                .animate-fadeIn {
-                    animation: fadeIn 0.3s ease-out forwards;
-                }
-                @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-                    20%, 40%, 60%, 80% { transform: translateX(5px); }
-                }
-                .animate-shake {
-                    animation: shake 0.5s ease-in-out;
-                }
-            </style>
-        `);
-        
-        // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', () => {
-            // 添加平滑滚动支持
-            if (typeof smoothScroll === 'undefined') {
-                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                    anchor.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        const target = document.querySelector(this.getAttribute('href'));
-                        if (target) {
-                            target.scrollIntoView({
-                                behavior: 'smooth'
-                            });
-                        }
-                    });
-                });
+            });
+
+            if (hasResults) {
+                noResults.classList.add('hidden');
+            } else {
+                noResults.classList.remove('hidden');
             }
         });
     </script>
