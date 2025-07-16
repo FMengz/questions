@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选题系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#f97316',
+                        neutral: '#f8fafc',
+                        'neutral-dark': '#1e293b',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .card-shadow {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .btn-hover {
+                @apply transform transition-all duration-300 hover:scale-105 hover:shadow-lg;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex flex-col">
+    <!-- 顶部装饰条 -->
+    <div class="h-1.5 bg-gradient-to-r from-primary to-accent"></div>
+    
+    <header class="py-8 px-4 md:px-8">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-neutral-dark mb-3 text-shadow">
+                <i class="fa fa-random text-primary mr-3"></i>选题系统
+            </h1>
+            <p class="text-lg md:text-xl text-secondary max-w-2xl mx-auto">
+                每位同学将随机分配3个题目，只能选择一次，请谨慎决定
+            </p>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center px-4 py-8">
+        <div class="w-full max-w-2xl bg-white rounded-2xl card-shadow overflow-hidden transform transition-all duration-500 hover:shadow-xl">
+            <!-- 表单区域 -->
+            <div class="p-6 md:p-8 border-b border-gray-100">
+                <h2 class="text-2xl font-semibold text-neutral-dark mb-6 flex items-center">
+                    <i class="fa fa-user-circle text-primary mr-2"></i>学生信息
+                </h2>
+                
+                <form id="selectionForm" class="space-y-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa fa-user text-gray-400"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="studentName" 
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                            placeholder="请输入您的姓名"
+                            required
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        id="selectButton"
+                        class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 flex items-center justify-center"
+                    >
+                        <i class="fa fa-random mr-2"></i>
+                        <span>抽选题目</span>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- 结果区域 -->
+            <div id="resultSection" class="p-6 md:p-8 hidden">
+                <h2 class="text-2xl font-semibold text-neutral-dark mb-6 flex items-center">
+                    <i class="fa fa-trophy text-accent mr-2"></i>已选题目
+                </h2>
+                
+                <div id="resultCard" class="bg-neutral rounded-xl p-5 border border-gray-100 relative overflow-hidden transform transition-all duration-500 hover:shadow-md">
+                    <!-- 装饰元素 -->
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-accent/10 rounded-bl-full -mr-8 -mt-8"></div>
+                    
+                    <div class="relative">
+                        <div class="flex items-center mb-3">
+                            <span class="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                                <i class="fa fa-check-circle mr-1"></i>已选中
+                            </span>
+                        </div>
+                        
+                        <h3 id="selectedTopic" class="text-xl font-medium text-neutral-dark mb-4"></h3>
+                        
+                        <div class="flex items-center text-sm text-secondary mt-5">
+                            <i class="fa fa-clock-o mr-1"></i>
+                            <span id="selectionTime"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 初始状态提示 -->
+            <div id="initialPrompt" class="p-6 md:p-8 text-center text-gray-500">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                    <i class="fa fa-lightbulb-o text-2xl text-gray-400"></i>
+                </div>
+                <p>请输入您的姓名并点击"抽选题目"按钮开始选题</p>
+            </div>
+            
+            <!-- 加载状态 -->
+            <div id="loadingState" class="p-6 md:p-8 text-center hidden">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <i class="fa fa-spinner fa-spin text-2xl text-primary"></i>
+                </div>
+                <p class="text-primary">正在为您随机分配题目...</p>
+            </div>
+            
+            <!-- 错误状态 -->
+            <div id="errorState" class="p-6 md:p-8 text-center hidden">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+                    <i class="fa fa-exclamation-triangle text-2xl text-red-500"></i>
+                </div>
+                <p id="errorMessage" class="text-red-500"></p>
+            </div>
+        </div>
+        
+        <!-- 管理员查看区域 -->
+        <div id="adminSection" class="w-full max-w-4xl mt-8 bg-white rounded-2xl card-shadow overflow-hidden hidden">
+            <div class="p-6 md:p-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-neutral-dark flex items-center">
+                        <i class="fa fa-shield text-primary mr-2"></i>管理员面板
+                    </h2>
+                    
+                    <div class="mt-4 md:mt-0">
+                        <button id="closeAdminBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all duration-300 flex items-center">
+                            <i class="fa fa-times mr-2"></i>关闭
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa fa-search text-gray-400"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="adminSearch" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                        placeholder="搜索学生姓名"
+                    >
+                </div>
+                
+                <div class="mt-6 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">学生姓名</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所选题目</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选题时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- 动态生成的内容 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="noResults" class="py-12 text-center text-gray-500 hidden">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                        <i class="fa fa-search text-2xl text-gray-400"></i>
+                    </div>
+                    <p>没有找到匹配的结果</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 统计信息卡片 -->
+        <div class="w-full max-w-2xl mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl p-4 card-shadow transform transition-all duration-300 hover:shadow-md">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                        <i class="fa fa-users text-primary"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">参与人数</p>
+                        <p id="participantCount" class="text-lg font-semibold text-neutral-dark">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-4 card-shadow transform transition-all duration-300 hover:shadow-md">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                        <i class="fa fa-check-square-o text-green-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">已选题</p>
+                        <p id="selectedCount" class="text-lg font-semibold text-neutral-dark">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-4 card-shadow transform transition-all duration-300 hover:shadow-md">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                        <i class="fa fa-tasks text-purple-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">可选题目</p>
+                        <p id="topicCount" class="text-lg font-semibold text-neutral-dark">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 管理员入口按钮 -->
+        <div class="mt-6">
+            <button id="adminLoginBtn" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 transform hover:scale-[1.02] flex items-center">
+                <i class="fa fa-lock mr-2"></i>管理员登录
+            </button>
+        </div>
+    </main>
+
+    <footer class="py-6 px-4 text-center text-gray-500 text-sm">
+        <p>© 2025 选题系统 | 每个人只有一次选题机会，请谨慎选择</p>
+    </footer>
+
+    <!-- 管理员登录模态框 -->
+    <div id="adminLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 md:p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-neutral-dark">管理员登录</h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-500">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="adminLoginForm" class="space-y-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa fa-key text-gray-400"></i>
+                    </div>
+                    <input 
+                        type="password" 
+                        id="adminPassword" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                        placeholder="请输入管理员密码"
+                        required
+                    >
+                </div>
+                
+                <button 
+                    type="submit" 
+                    class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
+                >
+                    登录
+                </button>
+            </form>
+            
+            <div id="loginError" class="mt-4 text-red-500 text-center hidden">
+                <i class="fa fa-exclamation-circle mr-1"></i>密码错误，请重试
+            </div>
+        </div>
+    </div>
+
+    <!-- GitHub配置模态框 -->
+    <div id="githubConfigModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 md:p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="githubModalContent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-neutral-dark">GitHub 配置</h3>
+                <button id="closeGithubModalBtn" class="text-gray-400 hover:text-gray-500">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="githubConfigForm" class="space-y-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa fa-user text-gray-400"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="githubUsername" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                        placeholder="GitHub 用户名"
+                        required
+                    >
+                </div>
+                
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa fa-repo text-gray-400"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="githubRepo" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                        placeholder="仓库名称"
+                        required
+                    >
+                </div>
+                
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa fa-key text-gray-400"></i>
+                    </div>
+                    <input 
+                        type="password" 
+                        id="githubToken" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none"
+                        placeholder="GitHub 个人访问令牌 (具有 repo 权限)"
+                        required
+                    >
+                </div>
+                
+                <button 
+                    type="submit" 
+                    class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
+                >
+                    保存配置
+                </button>
+            </form>
+            
+            <div id="githubConfigError" class="mt-4 text-red-500 text-center hidden">
+                <i class="fa fa-exclamation-circle mr-1"></i>配置错误，请检查信息
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟的选题数据库
+        const mockTopicsDatabase = {
+            // 这里只列出了5个学生作为示例，实际应该有30+个学生
+            "张三": [
+                "基于机器学习的图像识别技术研究",
+                "区块链技术在金融领域的应用分析",
+                "智能推荐系统的设计与实现"
+            ],
+            "李四": [
+                "大数据分析在电商中的应用",
+                "物联网技术在智能家居中的实现",
+                "自然语言处理中的情感分析研究"
+            ],
+            "王五": [
+                "云计算环境下的数据安全研究",
+                "移动应用开发中的用户体验设计",
+                "计算机视觉在自动驾驶中的应用"
+            ],
+            "赵六": [
+                "人工智能在医疗诊断中的应用",
+                "虚拟现实技术在教育中的应用研究",
+                "数据挖掘技术在金融风险评估中的应用"
+            ],
+            "钱七": [
+                "软件开发中的敏捷方法研究",
+                "社交媒体中的信息传播模型研究",
+                "基于深度学习的语音识别系统设计"
+            ],
+            // 可以继续添加更多学生...
+            "学生1": ["题目1-1", "题目1-2", "题目1-3"],
+            "学生2": ["题目2-1", "题目2-2", "题目2-3"],
+            "学生3": ["题目3-1", "题目3-2", "题目3-3"],
+            "学生4": ["题目4-1", "题目4-2", "题目4-3"],
+            "学生5": ["题目5-1", "题目5-2", "题目5-3"],
+            "学生6": ["题目6-1", "题目6-2", "题目6-3"],
+            "学生7": ["题目7-1", "题目7-2", "题目7-3"],
+            "学生8": ["题目8-1", "题目8-2", "题目8-3"],
+            "学生9": ["题目9-1", "题目9-2", "题目9-3"],
+            "学生10": ["题目10-1", "题目10-2", "题目10-3"],
+            "学生11": ["题目11-1", "题目11-2", "题目11-3"],
+            "学生12": ["题目12-1", "题目12-2", "题目12-3"],
+            "学生13": ["题目13-1", "题目13-2", "题目13-3"],
+            "学生14": ["题目14-1", "题目14-2", "题目14-3"],
+            "学生15": ["题目15-1", "题目15-2", "题目15-3"],
+            "学生16": ["题目16-1", "题目16-2", "题目16-3"],
+            "学生17": ["题目17-1", "题目17-2", "题目17-3"],
+            "学生18": ["题目18-1", "题目18-2", "题目18-3"],
+            "学生19": ["题目19-1", "题目19-2", "题目19-3"],
+            "学生20": ["题目20-1", "题目20-2", "题目20-3"],
+            "学生21": ["题目21-1", "题目21-2", "题目21-3"],
+            "学生22": ["题目22-1", "题目22-2", "题目22-3"],
+            "学生23": ["题目23-1", "题目23-2", "题目23-3"],
+            "学生24": ["题目24-1", "题目24-2", "题目24-3"],
+            "学生25": ["题目25-1", "题目25-2", "题目25-3"],
+            "学生26": ["题目26-1", "题目26-2", "题目26-3"],
+            "学生27": ["题目27-1", "题目27-2", "题目27-3"],
+            "学生28": ["题目28-1", "题目28-2", "题目28-3"],
+            "学生29": ["题目29-1", "题目29-2", "题目29-3"],
+            "学生30": ["题目30-1", "题目30-2", "题目30-3"],
+        };
+
+        // GitHub配置
+        let githubConfig = {
+            username: '',
+            repo: '',
+            token: '',
+            branch: 'main', // 默认分支
+            filePath: 'data/selected_topics.json' // 数据文件路径
+        };
+
+        // 检查是否已配置GitHub
+        const savedConfig = localStorage.getItem('githubConfig');
+        if (savedConfig) {
+            try {
+                githubConfig = JSON.parse(savedConfig);
+            } catch (e) {
+                console.error('Failed to parse GitHub config:', e);
+            }
+        } else {
+            // 如果没有配置，显示配置模态框
+            setTimeout(() => {
+                openGithubConfigModal();
+            }, 500);
+        }
+
+        // 从GitHub加载数据
+        async function loadDataFromGitHub() {
+            try {
+                if (!githubConfig.token || !githubConfig.username || !githubConfig.repo) {
+                    return {}; // 没有配置GitHub，返回空数据
+                }
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.username}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (response.status === 404) {
+                    // 文件不存在，返回空数据
+                    return {};
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const content = atob(data.content); // Base64解码
+                return JSON.parse(content);
+            } catch (error) {
+                console.error('Error loading data from GitHub:', error);
+                showError('加载数据失败，请检查GitHub配置');
+                return {};
+            }
+        }
+
+        // 保存数据到GitHub
+        async function saveDataToGitHub(data) {
+            try {
+                if (!githubConfig.token || !githubConfig.username || !githubConfig.repo) {
+                    throw new Error('GitHub配置不完整');
+                }
+                
+                const content = btoa(JSON.stringify(data, null, 2)); // Base64编码
+                
+                // 先检查文件是否存在，获取sha值
+                let sha = null;
+                try {
+                    const checkResponse = await fetch(
+                        `https://api.github.com/repos/${githubConfig.username}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                        {
+                            headers: {
+                                'Authorization': `token ${githubConfig.token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        }
+                    );
+                    
+                    if (checkResponse.ok) {
+                        const fileData = await checkResponse.json();
+                        sha = fileData.sha;
+                    }
+                } catch (e) {
+                    // 文件不存在，继续创建
+                }
+                
+                const commitMessage = `Update selected topics data - ${new Date().toISOString()}`;
+                const requestData = {
+                    message: commitMessage,
+                    content: content,
+                    branch: githubConfig.branch
+                };
+                
+                if (sha) {
+                    requestData.sha = sha;
+                }
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.username}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                    {
+                        method: sha ? 'PUT' : 'POST',
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        body: JSON.stringify(requestData)
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Error saving data to GitHub:', error);
+                showError('保存数据失败，请检查GitHub配置');
+                throw error;
+            }
+        }
+
+        // 模拟的已选题记录（实际应用中应该存储在服务器端）
+        let selectedTopics = {};
+        
+        // 管理员密码（实际应用中应该存储在服务器端）
+        const ADMIN_PASSWORD = "admin123";
+        
+        // DOM元素
+        const selectionForm = document.getElementById('selectionForm');
+        const studentNameInput = document.getElementById('studentName');
+        const selectButton = document.getElementById('selectButton');
+        const resultSection = document.getElementById('resultSection');
+        const initialPrompt = document.getElementById('initialPrompt');
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const errorMessage = document.getElementById('errorMessage');
+        const selectedTopicElement = document.getElementById('selectedTopic');
+        const selectionTimeElement = document.getElementById('selectionTime');
+        const participantCountElement = document.getElementById('participantCount');
+        const selectedCountElement = document.getElementById('selectedCount');
+        const topicCountElement = document.getElementById('topicCount');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const adminSection = document.getElementById('adminSection');
+        const closeAdminBtn = document.getElementById('closeAdminBtn');
+        const adminTableBody = document.getElementById('adminTableBody');
+        const adminSearch = document.getElementById('adminSearch');
+        const noResults = document.getElementById('noResults');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const modalContent = document.getElementById('modalContent');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const adminPassword = document.getElementById('adminPassword');
+        const loginError = document.getElementById('loginError');
+        const githubConfigModal = document.getElementById('githubConfigModal');
+        const githubModalContent = document.getElementById('githubModalContent');
+        const closeGithubModalBtn = document.getElementById('closeGithubModalBtn');
+        const githubConfigForm = document.getElementById('githubConfigForm');
+        const githubUsername = document.getElementById('githubUsername');
+        const githubRepo = document.getElementById('githubRepo');
+        const githubToken = document.getElementById('githubToken');
+        const githubConfigError = document.getElementById('githubConfigError');
+        
+        // 页面加载时从GitHub加载数据
+        loadDataFromGitHub().then(data => {
+            selectedTopics = data;
+            updateStatistics();
+        });
+        
+        // 表单提交事件
+        selectionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const studentName = studentNameInput.value.trim();
+            
+            // 验证姓名
+            if (!studentName) {
+                showError('请输入您的姓名');
+                return;
+            }
+            
+            // 检查学生是否存在于题库中
+            if (!mockTopicsDatabase[studentName]) {
+                showError('未找到您的选题信息，请确认姓名是否正确');
+                return;
+            }
+            
+            // 显示加载状态
+            showLoading();
+            
+            try {
+                // 从GitHub重新加载数据，确保获取最新状态
+                selectedTopics = await loadDataFromGitHub();
+                
+                // 检查是否已选题
+                if (selectedTopics[studentName]) {
+                    // 已选题，直接显示结果
+                    displayResult(studentName);
+                    return;
+                }
+                
+                // 获取该学生的所有可选题目
+                const topics = mockTopicsDatabase[studentName];
+                
+                // 随机选择一个题目
+                const randomIndex = Math.floor(Math.random() * topics.length);
+                const selectedTopic = topics[randomIndex];
+                
+                // 记录选题结果
+                const selectionTime = new Date().toLocaleString();
+                selectedTopics[studentName] = {
+                    topic: selectedTopic,
+                    time: selectionTime,
+                    allTopics: topics
+                };
+                
+                // 保存到GitHub
+                await saveDataToGitHub(selectedTopics);
+                
+                // 显示结果
+                displayResult(studentName);
+                
+                // 更新统计信息
+                updateStatistics();
+            } catch (error) {
+                console.error('选题过程中出现错误:', error);
+                showError('选题过程中出现错误，请稍后再试');
+            }
+        });
+        
+        // 显示结果
+        function displayResult(studentName) {
+            const selection = selectedTopics[studentName];
+            
+            // 显示选中的题目
+            selectedTopicElement.textContent = selection.topic;
+            selectionTimeElement.textContent = `选题时间: ${selection.time}`;
+            
+            // 显示结果区域，隐藏其他区域
+            resultSection.classList.remove('hidden');
+            initialPrompt.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            
+            // 平滑滚动到结果区域
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // 添加动画效果
+            setTimeout(() => {
+                resultSection.classList.add('animate-fadeIn');
+            }, 10);
+        }
+        
+        // 显示加载状态
+        function showLoading() {
+            loadingState.classList.remove('hidden');
+            initialPrompt.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            errorState.classList.add('hidden');
+        }
+        
+        // 显示错误信息
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorState.classList.remove('hidden');
+            initialPrompt.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            
+            // 添加错误动画
+            errorState.classList.add('animate-shake');
+            setTimeout(() => {
+                errorState.classList.remove('animate-shake');
+            }, 500);
+        }
+        
+        // 更新统计信息
+        function updateStatistics() {
+            const totalStudents = Object.keys(mockTopicsDatabase).length;
+            const selectedStudents = Object.keys(selectedTopics).length;
+            const totalTopics = Object.values(mockTopicsDatabase).flat().length;
+            
+            participantCountElement.textContent = totalStudents;
+            selectedCountElement.textContent = selectedStudents;
+            topicCountElement.textContent = totalTopics;
+            
+            // 检查当前用户是否已经选过题
+            const studentName = studentNameInput.value.trim();
+            if (studentName && selectedTopics[studentName]) {
+                selectButton.innerHTML = '<i class="fa fa-eye mr-2"></i><span>查看已选题目</span>';
+                selectButton.classList.remove('bg-primary', 'hover:bg-primary/90');
+                selectButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
+            } else {
+                selectButton.innerHTML = '<i class="fa fa-random mr-2"></i><span>抽选题目</span>';
+                selectButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                selectButton.classList.add('bg-primary', 'hover:bg-primary/90');
+            }
+        }
+        
+        // 输入框事件 - 实时检查是否已选题
+        studentNameInput.addEventListener('input', updateStatistics);
+        
+        // 管理员登录按钮点击事件
+        adminLoginBtn.addEventListener('click', () => {
+            adminLoginModal.classList.remove('hidden');
+            // 添加动画效果
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            adminPassword.focus();
+        });
+        
+        // 关闭管理员面板按钮点击事件
+        closeAdminBtn.addEventListener('click', () => {
+            adminSection.classList.add('hidden');
+        });
+        
+        // 关闭模态框按钮点击事件
+        closeModalBtn.addEventListener('click', closeLoginModal);
+        
+        // 点击模态框外部关闭
+        adminLoginModal.addEventListener('click', (e) => {
+            if (e.target === adminLoginModal) {
+                closeLoginModal();
+            }
+        });
+        
+        // 关闭登录模态框
+        function closeLoginModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                adminLoginModal.classList.add('hidden');
+                loginError.classList.add('hidden');
+            }, 300);
+        }
+        
+        // 管理员登录表单提交事件
+        adminLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = adminPassword.value;
+            
+            if (password === ADMIN_PASSWORD) {
+                // 登录成功
+                closeLoginModal();
+                adminPassword.value = '';
+                
+                try {
+                    // 从GitHub加载最新数据
+                    selectedTopics = await loadDataFromGitHub();
+                    loadAdminTable();
+                    adminSection.classList.remove('hidden');
+                    // 平滑滚动到管理员区域
+                    adminSection.scrollIntoView({ behavior: 'smooth' });
+                } catch (error) {
+                    showError('加载管理员数据失败，请检查GitHub配置');
+                }
+            } else {
+                // 登录失败
+                loginError.classList.remove('hidden');
+                // 添加错误动画
+                loginError.classList.add('animate-shake');
+                setTimeout(() => {
+                    loginError.classList.remove('animate-shake');
+                }, 500);
+            }
+        });
+        
+        // 加载管理员表格数据
+        function loadAdminTable() {
+            const students = Object.keys(selectedTopics);
+            const sortedStudents = students.sort((a, b) => {
+                return new Date(selectedTopics[a].time) - new Date(selectedTopics[b].time);
+            });
+            
+            if (sortedStudents.length === 0) {
+                adminTableBody.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+            
+            noResults.classList.add('hidden');
+            adminTableBody.innerHTML = '';
+            
+            sortedStudents.forEach((student, index) => {
+                const selection = selectedTopics[student];
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${student}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900">${selection.topic}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${selection.time}
+                    </td>
+                `;
+                
+                adminTableBody.appendChild(row);
+            });
+        }
+        
+        // 管理员搜索功能
+        adminSearch.addEventListener('input', () => {
+            const searchTerm = adminSearch.value.toLowerCase().trim();
+            const rows = adminTableBody.querySelectorAll('tr');
+            
+            let hasResults = false;
+            
+            rows.forEach(row => {
+                const studentName = row.querySelector('td:nth-child(2) div div').textContent.toLowerCase();
+                if (studentName.includes(searchTerm)) {
+                    row.classList.remove('hidden');
+                    hasResults = true;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            
+            if (!hasResults && searchTerm) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+        });
+        
+        // 打开GitHub配置模态框
+        function openGithubConfigModal() {
+            // 填充已保存的配置
+            githubUsername.value = githubConfig.username || '';
+            githubRepo.value = githubConfig.repo || '';
+            githubToken.value = githubConfig.token || '';
+            
+            githubConfigModal.classList.remove('hidden');
+            setTimeout(() => {
+                githubModalContent.classList.remove('scale-95', 'opacity-0');
+                githubModalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+        
+        // 关闭GitHub配置模态框
+        function closeGithubConfigModal() {
+            githubModalContent.classList.remove('scale-100', 'opacity-100');
+            githubModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                githubConfigModal.classList.add('hidden');
+                githubConfigError.classList.add('hidden');
+            }, 300);
+        }
+        
+        // 关闭GitHub配置模态框按钮点击事件
+        closeGithubModalBtn.addEventListener('click', closeGithubConfigModal);
+        
+        // 点击GitHub配置模态框外部关闭
+        githubConfigModal.addEventListener('click', (e) => {
+            if (e.target === githubConfigModal) {
+                closeGithubConfigModal();
+            }
+        });
+        
+                // GitHub配置表单提交事件
+        githubConfigForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 获取表单值
+            const username = githubUsername.value.trim();
+            const repo = githubRepo.value.trim();
+            const token = githubToken.value.trim();
+            
+            if (!username || !repo || !token) {
+                githubConfigError.textContent = '请填写所有字段';
+                githubConfigError.classList.remove('hidden');
+                return;
+            }
+            
+            // 保存配置
+            githubConfig = {
+                ...githubConfig,
+                username,
+                repo,
+                token
+            };
+            
+            localStorage.setItem('githubConfig', JSON.stringify(githubConfig));
+            
+            // 测试配置是否有效
+            try {
+                showLoading();
+                await loadDataFromGitHub();
+                closeGithubConfigModal();
+                
+                // 显示成功消息
+                showSuccess('GitHub配置已保存并验证成功');
+                
+                // 更新统计信息，因为可能已经从GitHub加载了新数据
+                updateStatistics();
+            } catch (error) {
+                console.error('GitHub配置测试失败:', error);
+                githubConfigError.textContent = '验证失败，请检查您的GitHub凭证和仓库权限';
+                githubConfigError.classList.remove('hidden');
+                showError('GitHub配置测试失败，请检查您的凭证');
+            } finally {
+                // 隐藏加载状态
+                loadingState.classList.add('hidden');
+                // 如果用户已经输入了姓名，更新按钮状态
+                updateStatistics();
+            }
+        });
+        
+        // 显示成功消息（新增辅助函数）
+        function showSuccess(message) {
+            errorMessage.textContent = message;
+            errorState.classList.remove('hidden');
+            errorState.classList.remove('bg-red-100');
+            errorState.classList.add('bg-green-100');
+            
+            const errorIcon = errorState.querySelector('i');
+            if (errorIcon) {
+                errorIcon.classList.remove('fa-exclamation-triangle', 'text-red-500');
+                errorIcon.classList.add('fa-check-circle', 'text-green-500');
+            }
+            
+            const errorText = errorState.querySelector('p');
+            if (errorText) {
+                errorText.classList.remove('text-red-500');
+                errorText.classList.add('text-green-500');
+            }
+            
+            // 添加成功动画
+            errorState.classList.add('animate-fadeIn');
+            setTimeout(() => {
+                errorState.classList.remove('animate-fadeIn');
+                // 5秒后自动隐藏成功消息
+                setTimeout(() => {
+                    errorState.classList.add('hidden');
+                    // 恢复错误状态样式
+                    errorState.classList.remove('bg-green-100');
+                    errorState.classList.add('bg-red-100');
+                    if (errorIcon) {
+                        errorIcon.classList.remove('fa-check-circle', 'text-green-500');
+                        errorIcon.classList.add('fa-exclamation-triangle', 'text-red-500');
+                    }
+                    if (errorText) {
+                        errorText.classList.remove('text-green-500');
+                        errorText.classList.add('text-red-500');
+                    }
+                }, 5000);
+            }, 10);
+        }
+        
+        // 添加动画样式（在style标签中添加）
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fadeIn {
+                    animation: fadeIn 0.3s ease-out forwards;
+                }
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+                .animate-shake {
+                    animation: shake 0.5s ease-in-out;
+                }
+            </style>
+        `);
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            // 添加平滑滚动支持
+            if (typeof smoothScroll === 'undefined') {
+                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                    anchor.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const target = document.querySelector(this.getAttribute('href'));
+                        if (target) {
+                            target.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
